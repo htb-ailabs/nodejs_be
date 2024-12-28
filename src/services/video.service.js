@@ -9,7 +9,9 @@ const videoService = {
     console.log({ userDayne: req.user });
     const videos = await prisma.videos.findMany();
     // console.log({ userDayne: req.user });
-    return videos;
+    return {
+      items: videos
+    }
   },
 };
 

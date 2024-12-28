@@ -5,7 +5,7 @@ const videoController = {
   videoList: async (req, res, next) => {
     try {
       const videos = await videoService.videoList(req);
-      // videoService.videoList(req);
+      
       const resData = responseSuccess(
         videos,
         `Get list video successfully`,
