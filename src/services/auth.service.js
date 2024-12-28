@@ -1,8 +1,11 @@
 import prisma from "../common/prisma/init.prisma.js";
 import { BadRequestException } from "../common/helpers/error.helper.js";
 import bcrypt from "bcrypt";
+import jwt from 'jsonwebtoken'
+import { ACCESS_TOKEN_EXPIRED, ACCESS_TOKEN_SECRET } from "../common/constant/app.constant.js";
 
 const authService = {
+  // api
   register: async (req) => {
     // bước 1: nhận dữ liệu: full_name, email, password
     const { full_name, email, pass_word } = req.body;
@@ -29,6 +32,8 @@ const authService = {
   },
   login: async (req) => {
     const { email, pass_word } = req.body;
+    // console.log(email, pass_word);
+
     const userExists = await prisma.users.findFirst({
       where: { email: email },
     })
@@ -42,11 +47,23 @@ const authService = {
     if(!isPassword){
       throw new BadRequestException(`password kg chinh xac`)
     }
+
+    const accessToken = authService.createTokens(userExists.user_id);
     return {
-      accessToken: `123`,
-      refreshToken: `456`
+      accessToken: accessToken,
+      refreshToken: `456`,
     };
   },
+
+  // function
+  createTokens:(userId) => {
+    if(!userId) throw new BadRequestException(`kg co userId de tao token`)
+    const accessToken = jwt.sign({ userId: 2 }, ACCESS_TOKEN_SECRET, {
+      expiresIn: ACCESS_TOKEN_EXPIRED,
+    });
+    return accessToken
+  }
 };
+
 
 export default authService;

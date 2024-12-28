@@ -1,3 +1,4 @@
+import { responseSuccess } from "../common/helpers/response.helper.js";
 import authService from "../services/auth.service.js";
 
 const loginController = {

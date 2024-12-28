@@ -1,20 +1,9 @@
-// import express from "express";
-import express, { raw } from "express";
-import models from "../common/sequelize/init.sequelize.js";
+import express from "express";
 import videoController from "../controllers/video.controller.js";
-
-// import { DataTypes, Sequelize } from "sequelize";
-// import initModels from "../models/init-models.js";
-// import routeRouter from "./root.router";
+import { protect } from "../common/middlewares/protect.middleware.js";
 
 const videoRouter = express.Router();
 
-// const sequelize = new Sequelize(
-//   "mysql://root:123456@localhost:3306/node_46_media"
-// ); // Example for mysql
-
-// const models = initModels(sequelize);
-
-videoRouter.get("/video-list", videoController.videoList);
+videoRouter.get("/video-list", protect, videoController.videoList);
 
 export default videoRouter;
