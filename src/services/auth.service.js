@@ -2,7 +2,7 @@ import prisma from "../common/prisma/init.prisma.js";
 import { BadRequestException } from "../common/helpers/error.helper.js";
 import bcrypt from "bcrypt";
 import jwt from 'jsonwebtoken'
-import { ACCESS_TOKEN_EXPIRED, ACCESS_TOKEN_SECRET } from "../common/constant/app.constant.js";
+import { ACCESS_TOKEN_EXPIRED, ACCESS_TOKEN_SECRET, REFRESH_TOKEN_EXPIRED, REFRESH_TOKEN_SECRET } from "../common/constant/app.constant.js";
 
 const authService = {
   // api
@@ -37,31 +37,65 @@ const authService = {
     const userExists = await prisma.users.findFirst({
       where: { email: email },
     })
-    
-   
+
+
     if (!userExists) {
       throw new BadRequestException(`tai khoan khong ton tai, vui long dang ky`)
     }
 
-    const isPassword = await bcrypt.compareSync(pass_word,userExists.pass_word)
-    if(!isPassword){
+    if (!userExists.pass_word) {
+      if (userExists.face_app_id) {
+        throw new BadRequestException(`vui long dang nhap lai facebook`)
+      }
+    }
+
+    const isPassword = await bcrypt.compareSync(pass_word, userExists.pass_word)
+    if (!isPassword) {
       throw new BadRequestException(`password kg chinh xac`)
     }
 
-    const accessToken = authService.createTokens(userExists.user_id);
-    return {
-      accessToken: accessToken,
-      refreshToken: `456`,
-    };
+    const tokens = authService.createTokens(userExists.user_id);
+    return tokens
+  },
+
+  facebookLogin: async (req) => {
+    console.log(req.body)
+    const { name, email, picture, id } = req.body
+    const avatar = picture.data.url
+    console.log({ name, email, avatar })
+
+    const userExist = await prisma.users.findFirst({
+      where: {
+        email: email
+      }
+    })
+
+    if (!userExist) {
+      prisma.users.create({
+        data: {
+          email: email,
+          full_name: name,
+          face_app_id: id
+        }
+      })
+    }
+
+    const tokens = authService.createTokens(userExist.user_id);
+    return tokens
   },
 
   // function
-  createTokens:(userId) => {
-    if(!userId) throw new BadRequestException(`kg co userId de tao token`)
+  createTokens: (userId) => {
+    if (!userId) throw new BadRequestException(`kg co userId de tao token`)
     const accessToken = jwt.sign({ userId: 2 }, ACCESS_TOKEN_SECRET, {
       expiresIn: ACCESS_TOKEN_EXPIRED,
     });
-    return accessToken
+
+    const refreshToken = jwt.sign({ userId: 2 }, REFRESH_TOKEN_SECRET, {
+      expiresIn: REFRESH_TOKEN_EXPIRED,
+    });
+
+    return { accessToken: accessToken, refreshToken: refreshToken }
   }
 };
 
