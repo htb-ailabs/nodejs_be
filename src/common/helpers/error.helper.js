@@ -3,6 +3,11 @@ import jwt from "jsonwebtoken";
 
 export const handleError = (err, req, res, next) => {
   console.log({ err });
+  // 401: logout
+  // 403 refresh token
+  if (err instanceof jwt.JsonWebTokenError) {
+    err.code = 401;
+  }
   if (err instanceof jwt.TokenExpiredError) {
     err.code = 403;
   }

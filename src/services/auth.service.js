@@ -1,8 +1,13 @@
 import prisma from "../common/prisma/init.prisma.js";
 import { BadRequestException } from "../common/helpers/error.helper.js";
 import bcrypt from "bcrypt";
-import jwt from 'jsonwebtoken'
-import { ACCESS_TOKEN_EXPIRED, ACCESS_TOKEN_SECRET, REFRESH_TOKEN_EXPIRED, REFRESH_TOKEN_SECRET } from "../common/constant/app.constant.js";
+import jwt from "jsonwebtoken";
+import {
+  ACCESS_TOKEN_EXPIRED,
+  ACCESS_TOKEN_SECRET,
+  REFRESH_TOKEN_EXPIRED,
+  REFRESH_TOKEN_SECRET,
+} from "../common/constant/app.constant.js";
 
 const authService = {
   // api
@@ -36,57 +41,109 @@ const authService = {
 
     const userExists = await prisma.users.findFirst({
       where: { email: email },
-    })
-
+    });
 
     if (!userExists) {
-      throw new BadRequestException(`tai khoan khong ton tai, vui long dang ky`)
+      throw new BadRequestException(
+        `tai khoan khong ton tai, vui long dang ky`
+      );
     }
 
     if (!userExists.pass_word) {
       if (userExists.face_app_id) {
-        throw new BadRequestException(`vui long dang nhap lai facebook`)
+        throw new BadRequestException(`vui long dang nhap lai facebook`);
       }
     }
 
-    const isPassword = await bcrypt.compareSync(pass_word, userExists.pass_word)
+    const isPassword = await bcrypt.compareSync(
+      pass_word,
+      userExists.pass_word
+    );
     if (!isPassword) {
-      throw new BadRequestException(`password kg chinh xac`)
+      throw new BadRequestException(`password kg chinh xac`);
     }
 
     const tokens = authService.createTokens(userExists.user_id);
-    return tokens
+    return tokens;
   },
 
   facebookLogin: async (req) => {
-    console.log(req.body)
-    const { name, email, picture, id } = req.body
-    const avatar = picture.data.url
-    console.log({ name, email, avatar })
+    console.log(req.body);
+    const { name, email, picture, id } = req.body;
+    const avatar = picture.data.url;
+    console.log({ name, email, avatar });
 
     const userExist = await prisma.users.findFirst({
       where: {
-        email: email
-      }
-    })
+        email: email,
+      },
+    });
 
     if (!userExist) {
       prisma.users.create({
         data: {
           email: email,
           full_name: name,
-          face_app_id: id
-        }
-      })
+          face_app_id: id,
+        },
+      });
     }
 
     const tokens = authService.createTokens(userExist.user_id);
-    return tokens
+    return tokens;
+  },
+
+  refreshToken: async (req) => {
+    const refreshToken = req.headers.authorization?.split(" ")[1];
+    if (!refreshToken) {
+      throw new UnauthorizationException(
+        `Vui lòng cung cấp token để tiếp tục sử dụng`
+      );
+    }
+
+    const accessToken = req.headers[`x-access-token`];
+    if (!accessToken) {
+      throw new UnauthorizationException(
+        `Vui lòng cung cấp token để tiếp tục sử dụng`
+      );
+    }
+
+    console.log({
+      refreshToken,
+      accessToken,
+    });
+
+    const decodeRefeshToken = jwt.verify(refreshToken, REFRESH_TOKEN_SECRET);
+
+    const decodeAccessToken = jwt.verify(accessToken, ACCESS_TOKEN_SECRET, {
+      ignoreExpiration: true,
+    });
+
+    console.log({
+      decodeRefeshToken,
+      decodeAccessToken,
+    });
+
+    if (decodeRefeshToken.userId !== decodeAccessToken.userId) {
+      throw new UnauthorizationException(`Cặp Token không hợp lệ`);
+    }
+
+    const userExists = await prisma.users.findUnique({
+      where: {
+        user_id: decodeRefeshToken.userId,
+      },
+    });
+
+    if (!userExists) throw new UnauthorizationException(`User không tồn tại`);
+
+    const tokens = authService.createTokens(userExists.user_id);
+
+    return tokens;
   },
 
   // function
   createTokens: (userId) => {
-    if (!userId) throw new BadRequestException(`kg co userId de tao token`)
+    if (!userId) throw new BadRequestException(`kg co userId de tao token`);
     const accessToken = jwt.sign({ userId: 2 }, ACCESS_TOKEN_SECRET, {
       expiresIn: ACCESS_TOKEN_EXPIRED,
     });
@@ -95,9 +152,8 @@ const authService = {
       expiresIn: REFRESH_TOKEN_EXPIRED,
     });
 
-    return { accessToken: accessToken, refreshToken: refreshToken }
-  }
+    return { accessToken: accessToken, refreshToken: refreshToken };
+  },
 };
-
 
 export default authService;
